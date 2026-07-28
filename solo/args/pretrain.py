@@ -171,5 +171,28 @@ def parse_cfg(cfg: omegaconf.DictConfig):
         )
     elif cfg.optimizer.name == "adamw":
         cfg.optimizer.kwargs.betas = omegaconf_select(cfg, "optimizer.kwargs.betas", [0.9, 0.999])
+    elif cfg.optimizer.name == "muon":
+        cfg.optimizer.kwargs.momentum = omegaconf_select(
+            cfg, "optimizer.kwargs.momentum", 0.95
+        )
+        cfg.optimizer.kwargs.ns_steps = omegaconf_select(cfg, "optimizer.kwargs.ns_steps", 5)
+        cfg.optimizer.kwargs.nesterov = omegaconf_select(
+            cfg, "optimizer.kwargs.nesterov", True
+        )
+        cfg.optimizer.kwargs.betas = omegaconf_select(
+            cfg, "optimizer.kwargs.betas", [0.9, 0.95]
+        )
+        cfg.optimizer.kwargs.eps = omegaconf_select(cfg, "optimizer.kwargs.eps", 1e-8)
+    elif cfg.optimizer.name == "riemannian":
+        cfg.optimizer.kwargs.betas = omegaconf_select(
+            cfg, "optimizer.kwargs.betas", [0.9, 0.999]
+        )
+        cfg.optimizer.kwargs.eps = omegaconf_select(cfg, "optimizer.kwargs.eps", 1e-8)
+        cfg.optimizer.kwargs.manifold = omegaconf_select(
+            cfg, "optimizer.kwargs.manifold", "stiefel"
+        )
+        cfg.optimizer.kwargs.retraction = omegaconf_select(
+            cfg, "optimizer.kwargs.retraction", True
+        )
 
     return cfg

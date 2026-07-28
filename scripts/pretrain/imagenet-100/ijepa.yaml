@@ -1,0 +1,59 @@
+defaults:
+  - _self_
+  - augmentations: ijepa.yaml
+  - wandb: private.yaml
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .
+
+name: "ijepa-imagenet100"
+method: "ijepa"
+backbone:
+  name: "vit_small"
+  kwargs:
+    img_size: 224
+    patch_size: 16
+method_kwargs:
+  predictor_embed_dim: 384
+  predictor_depth: 6
+  predictor_num_heads: 6
+  context_mask_scale: [0.85, 1.0]
+  target_mask_scale: [0.15, 0.2]
+  target_aspect_ratio: [0.75, 1.5]
+  num_context_masks: 1
+  num_target_masks: 4
+  min_keep: 10
+  allow_overlap: False
+data:
+  dataset: imagenet100
+  train_path: "./datasets/imagenet-100/train"
+  val_path: "./datasets/imagenet-100/val"
+  format: "image_folder"
+  num_workers: 4
+optimizer:
+  name: "adamw"
+  batch_size: 128
+  lr: 1.0e-3
+  classifier_lr: 1.0e-3
+  weight_decay: 0.04
+  kwargs:
+    betas: [0.9, 0.95]
+scheduler:
+  name: "warmup_cosine"
+  warmup_start_lr: 2.0e-4
+checkpoint:
+  enabled: True
+  dir: "trained_models"
+  frequency: 1
+auto_resume:
+  enabled: True
+
+max_epochs: 300
+devices: [0]
+sync_batchnorm: True
+accelerator: "gpu"
+precision: 16-mixed

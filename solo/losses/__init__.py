@@ -22,6 +22,15 @@ from solo.losses.byol import byol_loss_func
 from solo.losses.deepclusterv2 import deepclusterv2_loss_func
 from solo.losses.dino import DINOLoss
 from solo.losses.mae import mae_loss_func
+from solo.losses.ijepa import ijepa_loss_func
+from solo.losses.lejepa import SIGRegLoss, lejepa_invariance_loss
+from solo.losses.ortho import (
+    calculate_ortho_loss,
+    compute_soft_ortho,
+    compute_srip,
+    get_or_gamma,
+    spectral_norm_power_iter,
+)
 from solo.losses.mocov2plus import mocov2plus_loss_func
 from solo.losses.mocov3 import mocov3_loss_func
 from solo.losses.nnclr import nnclr_loss_func
@@ -39,6 +48,14 @@ __all__ = [
     "deepclusterv2_loss_func",
     "DINOLoss",
     "mae_loss_func",
+    "ijepa_loss_func",
+    "SIGRegLoss",
+    "lejepa_invariance_loss",
+    "calculate_ortho_loss",
+    "compute_soft_ortho",
+    "compute_srip",
+    "get_or_gamma",
+    "spectral_norm_power_iter",
     "mocov2plus_loss_func",
     "mocov3_loss_func",
     "nnclr_loss_func",

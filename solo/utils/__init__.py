@@ -21,10 +21,12 @@ from solo.utils import (
     checkpointer,
     knn,
     lars,
+    muon,
     metrics,
     misc,
     momentum,
     positional_encodings,
+    riemannian,
     sinkhorn_knopp,
 )
 
@@ -33,9 +35,11 @@ __all__ = [
     "knn",
     "misc",
     "lars",
+    "muon",
     "metrics",
     "momentum",
     "positional_encodings",
+    "riemannian",
     "sinkhorn_knopp",
 ]
 

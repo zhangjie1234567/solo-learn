@@ -65,7 +65,46 @@ The library is self-contained, but it is possible to use the models outside of s
 * [BYOL](https://arxiv.org/abs/2006.07733)
 * [DeepCluster V2](https://arxiv.org/abs/2006.09882)
 * [DINO](https://arxiv.org/abs/2104.14294)
+* I-JEPA (independent integration; see [official repository](https://github.com/facebookresearch/ijepa))
 * [MAE](https://arxiv.org/abs/2111.06377)
+* LeJEPA (independent integration; see [official repository](https://github.com/galilai-group/lejepa))
+
+Orthogonality Regularization (OR) can be enabled for SSL pretraining without changing the
+backbone, augmentation, optimizer, or scheduler. It only regularizes `Conv2d` and `Linear`
+weights inside the encoder backbone; projectors, predictors, classifiers, linear probes, and
+downstream fine-tuning are excluded. Use the default Soft Orthogonality (SO) regularizer or
+select SRIP for an ablation:
+
+```bash
+python main_pretrain.py --config-path scripts/pretrain/imagenet-100 \
+  --config-name byol.yaml ++use_ortho_reg=true ++ortho_reg_type=so
+
+python main_pretrain.py --config-path scripts/pretrain/imagenet-100 \
+  --config-name byol.yaml ++use_ortho_reg=true ++ortho_reg_type=srip
+```
+
+Set `++ortho_gamma=VALUE` to override the backbone-specific recommended coefficient.
+
+The optimizer registry also includes `muon` and `riemannian`. Muon applies Newton--Schulz
+orthogonalized momentum updates to matrix hidden weights and an AdamW-style fallback to biases,
+normalization parameters, and classifier parameters. The Riemannian optimizer applies tangent
+projection plus QR retraction to matrix parameters on the Stiefel manifold and uses the same
+fallback for auxiliary parameters:
+
+```bash
+python main_pretrain.py --config-path scripts/pretrain/imagenet-100 \
+  --config-name byol.yaml \
+  ++optimizer.name=muon \
+  ++optimizer.lr=0.02 \
+  ++optimizer.kwargs.momentum=0.95 \
+  ++optimizer.kwargs.ns_steps=5
+
+python main_pretrain.py --config-path scripts/pretrain/imagenet-100 \
+  --config-name byol.yaml \
+  ++optimizer.name=riemannian \
+  ++optimizer.kwargs.manifold=stiefel \
+  ++optimizer.kwargs.retraction=true
+```
 * [MoCo V2+](https://arxiv.org/abs/2003.04297)
 * [MoCo V3](https://arxiv.org/abs/2104.02057)
 * [NNBYOL](https://arxiv.org/abs/2104.14548)

@@ -33,6 +33,10 @@ from .vit_mae import vit_tiny as mae_vit_tiny
 from .vit_mae import vit_small as mae_vit_small
 from .vit_mae import vit_base as mae_vit_base
 from .vit_mae import vit_large as mae_vit_large
+from .vit_jepa import vit_tiny as jepa_vit_tiny
+from .vit_jepa import vit_small as jepa_vit_small
+from .vit_jepa import vit_base as jepa_vit_base
+from .vit_jepa import vit_large as jepa_vit_large
 
 
 def get_constructor(method, options, default):
@@ -45,22 +49,38 @@ def get_constructor(method, options, default):
 
 
 def vit_tiny(method, *args, **kwargs):
-    custom_backbone_constructor = {"mocov3": mocov3_vit_tiny, "mae": mae_vit_tiny}
+    custom_backbone_constructor = {
+        "mocov3": mocov3_vit_tiny,
+        "mae": mae_vit_tiny,
+        "ijepa": jepa_vit_tiny,
+    }
     return get_constructor(method, custom_backbone_constructor, default_vit_tiny)(*args, **kwargs)
 
 
 def vit_small(method, *args, **kwargs):
-    custom_backbone_constructor = {"mocov3": mocov3_vit_small, "mae": mae_vit_small}
+    custom_backbone_constructor = {
+        "mocov3": mocov3_vit_small,
+        "mae": mae_vit_small,
+        "ijepa": jepa_vit_small,
+    }
     return get_constructor(method, custom_backbone_constructor, default_vit_small)(*args, **kwargs)
 
 
 def vit_base(method, *args, **kwargs):
-    custom_backbone_constructor = {"mocov3": mocov3_vit_base, "mae": mae_vit_base}
+    custom_backbone_constructor = {
+        "mocov3": mocov3_vit_base,
+        "mae": mae_vit_base,
+        "ijepa": jepa_vit_base,
+    }
     return get_constructor(method, custom_backbone_constructor, default_vit_base)(*args, **kwargs)
 
 
 def vit_large(method, *args, **kwargs):
-    custom_backbone_constructor = {"mocov3": mocov3_vit_large, "mae": mae_vit_large}
+    custom_backbone_constructor = {
+        "mocov3": mocov3_vit_large,
+        "mae": mae_vit_large,
+        "ijepa": jepa_vit_large,
+    }
     return get_constructor(method, custom_backbone_constructor, default_vit_large)(*args, **kwargs)
 
 

@@ -55,6 +55,9 @@ from solo.utils.knn import WeightedKNNClassifier
 from solo.utils.lars import LARS
 from solo.utils.lr_scheduler import LinearWarmupCosineAnnealingLR
 from solo.utils.metrics import accuracy_at_k, weighted_mean
+from solo.losses.ortho import calculate_ortho_loss, get_or_gamma
+from solo.utils.muon import Muon
+from solo.utils.riemannian import RiemannianAdam
 from solo.utils.misc import omegaconf_select, remove_bias_and_norm_from_weight_decay
 from solo.utils.momentum import MomentumUpdater, initialize_momentum_params
 
@@ -99,6 +102,8 @@ class BaseMethod(pl.LightningModule):
         "lars": LARS,
         "adam": torch.optim.Adam,
         "adamw": torch.optim.AdamW,
+        "muon": Muon,
+        "riemannian": RiemannianAdam,
     }
     _SCHEDULERS = [
         "reduce",
@@ -221,6 +226,29 @@ class BaseMethod(pl.LightningModule):
         self.classifier_lr: float = cfg.optimizer.classifier_lr
         self.extra_optimizer_args: Dict[str, Any] = cfg.optimizer.kwargs
         self.exclude_bias_n_norm_wd: bool = cfg.optimizer.exclude_bias_n_norm_wd
+
+        # Optional encoder-only orthogonality regularization. This is intentionally configured
+        # at the pretraining method level; LinearModel and downstream modules do not inherit
+        # this training step and therefore never activate OR.
+        ortho_cfg = omegaconf_select(cfg, "ortho_reg", {})
+        self.use_ortho_reg: bool = cfg.get(
+            "use_ortho_reg", ortho_cfg.get("enabled", False)
+        )
+        self.ortho_reg_type: str = cfg.get(
+            "ortho_reg_type", ortho_cfg.get("reg_type", "so")
+        )
+        self.ortho_power_iter: int = cfg.get(
+            "ortho_power_iter", ortho_cfg.get("power_iter", 5)
+        )
+        self.ortho_debug_print: bool = cfg.get(
+            "ortho_debug_print", ortho_cfg.get("debug_print", False)
+        )
+        manual_gamma = cfg.get("ortho_gamma", ortho_cfg.get("gamma", None))
+        self.ortho_gamma: float = (
+            float(manual_gamma)
+            if manual_gamma is not None
+            else get_or_gamma(self.backbone_name, self.ortho_reg_type)
+        )
 
         # scheduler related
         self.scheduler: str = cfg.scheduler.name
@@ -348,6 +376,11 @@ class BaseMethod(pl.LightningModule):
         assert self.optimizer in self._OPTIMIZERS
         optimizer = self._OPTIMIZERS[self.optimizer]
 
+        if self.optimizer in {"muon", "riemannian"}:
+            learnable_params = self._split_special_optimizer_groups(
+                learnable_params, self.optimizer
+            )
+
         # create optimizer
         optimizer = optimizer(
             learnable_params,
@@ -401,6 +434,40 @@ class BaseMethod(pl.LightningModule):
                 scheduler.get_lr = partial_fn
 
         return [optimizer], [scheduler]
+
+    @staticmethod
+    def _split_special_optimizer_groups(
+        learnable_params: List[Dict[str, Any]], optimizer_name: str
+    ) -> List[Dict[str, Any]]:
+        """Marks matrix hidden parameters for Muon/Riemannian updates.
+
+        Existing parameter groups, including their per-group learning rates and weight decay,
+        are preserved. Only groups containing both matrix and auxiliary parameters are split.
+        Classifier groups always use the auxiliary AdamW-style update.
+        """
+
+        flag_name = "use_muon" if optimizer_name == "muon" else "use_riemannian"
+        output = []
+        for group in learnable_params:
+            parameters = list(group["params"])
+            group_name = str(group.get("name", "")).lower()
+            matrix_params = [
+                parameter
+                for parameter in parameters
+                if parameter.ndim >= 2 and "classifier" not in group_name
+            ]
+            matrix_ids = {id(parameter) for parameter in matrix_params}
+            auxiliary_params = [
+                parameter for parameter in parameters if id(parameter) not in matrix_ids
+            ]
+            for params, use_special in ((matrix_params, True), (auxiliary_params, False)):
+                if not params:
+                    continue
+                split_group = {key: value for key, value in group.items() if key != "params"}
+                split_group["params"] = params
+                split_group[flag_name] = use_special
+                output.append(split_group)
+        return output
 
     def optimizer_zero_grad(self, epoch, batch_idx, optimizer, *_):
         """
@@ -521,6 +588,24 @@ class BaseMethod(pl.LightningModule):
         outs["loss"] = sum(outs["loss"]) / self.num_large_crops
         outs["acc1"] = sum(outs["acc1"]) / self.num_large_crops
         outs["acc5"] = sum(outs["acc5"]) / self.num_large_crops
+
+        if self.use_ortho_reg:
+            ortho_loss = calculate_ortho_loss(
+                self.backbone,
+                reg_type=self.ortho_reg_type,
+                power_iter=self.ortho_power_iter,
+                debug_print=self.ortho_debug_print,
+            )
+            outs["ortho_loss"] = ortho_loss
+            outs["loss"] = outs["loss"] + self.ortho_gamma * ortho_loss
+            self.log_dict(
+                {
+                    "train_ortho_loss": ortho_loss,
+                    "train_ortho_weighted_loss": self.ortho_gamma * ortho_loss,
+                },
+                on_epoch=True,
+                sync_dist=True,
+            )
 
         metrics = {
             "train_class_loss": outs["loss"],
