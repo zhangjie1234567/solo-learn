@@ -17,8 +17,8 @@ backbone:
 pretrain_method: "barlow_twins"
 data:
   dataset: imagenet100
-  train_path: "/home/CORP/vg.turrisi/Documents/datasets/imagenet-100/train"
-  val_path: "/home/CORP/vg.turrisi/Documents/datasets/imagenet-100/val"
+  train_path: "/ssd/zhangjie/imagenet100/imagefolder/train"
+  val_path: "/ssd/zhangjie/imagenet100/imagefolder/val"
   format: "image_folder"
   num_workers: 4
 optimizer:

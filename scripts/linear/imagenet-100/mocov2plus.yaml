@@ -17,9 +17,9 @@ backbone:
 pretrain_method: "mocov2plus"
 data:
   dataset: imagenet100
-  train_path: "./datasets/imagenet-100/train"
-  val_path: "./datasets/imagenet-100/val"
-  format: "dali"
+  train_path: "/ssd/zhangjie/imagenet100/imagefolder/train"
+  val_path: "/ssd/zhangjie/imagenet100/imagefolder/val"
+  format: "image_folder"
   num_workers: 4
 optimizer:
   name: "sgd"

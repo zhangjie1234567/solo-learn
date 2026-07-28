@@ -435,18 +435,38 @@ class BaseMethod(pl.LightningModule):
 
         return [optimizer], [scheduler]
 
-    @staticmethod
     def _split_special_optimizer_groups(
-        learnable_params: List[Dict[str, Any]], optimizer_name: str
+        self, learnable_params: List[Dict[str, Any]], optimizer_name: str
     ) -> List[Dict[str, Any]]:
-        """Marks matrix hidden parameters for Muon/Riemannian updates.
+        """Marks backbone hidden matrices for Muon/Riemannian updates.
 
         Existing parameter groups, including their per-group learning rates and weight decay,
-        are preserved. Only groups containing both matrix and auxiliary parameters are split.
-        Classifier groups always use the auxiliary AdamW-style update.
+        are preserved. Muon follows its reference implementation: input embeddings/first
+        convolution, output heads, bias, and normalization parameters use AdamW-style updates;
+        only hidden matrix weights in the encoder backbone receive the special update.
+
+        The same split is deliberately used for the Stiefel experiment, so the optimizer
+        comparison changes the encoder hidden-weight update only rather than also constraining
+        projectors, predictors, or online classifiers.
         """
 
         flag_name = "use_muon" if optimizer_name == "muon" else "use_riemannian"
+        # ``aux_lr`` is intentionally not scaled by the global-batch-size helper: it is
+        # the literal AdamW learning rate for non-special parameters. This is particularly
+        # important for Muon, whose matrix update learning rate has a different scale.
+        aux_lr = self.extra_optimizer_args.get("aux_lr", None)
+        if aux_lr is None:
+            aux_lr = self.lr
+        protected_ids = set()
+        # ConvNets: keep the input convolution on the auxiliary optimizer. ViTs expose their
+        # input patch embedding as the first Conv2d module, so it is covered by the same rule.
+        first_conv = next(
+            (module for module in self.backbone.modules() if isinstance(module, nn.Conv2d)),
+            None,
+        )
+        if first_conv is not None:
+            protected_ids.update(id(parameter) for parameter in first_conv.parameters())
+
         output = []
         for group in learnable_params:
             parameters = list(group["params"])
@@ -454,7 +474,11 @@ class BaseMethod(pl.LightningModule):
             matrix_params = [
                 parameter
                 for parameter in parameters
-                if parameter.ndim >= 2 and "classifier" not in group_name
+                if (
+                    group_name == "backbone"
+                    and parameter.ndim >= 2
+                    and id(parameter) not in protected_ids
+                )
             ]
             matrix_ids = {id(parameter) for parameter in matrix_params}
             auxiliary_params = [
@@ -466,6 +490,8 @@ class BaseMethod(pl.LightningModule):
                 split_group = {key: value for key, value in group.items() if key != "params"}
                 split_group["params"] = params
                 split_group[flag_name] = use_special
+                if not use_special and "lr" not in split_group:
+                    split_group["lr"] = aux_lr
                 output.append(split_group)
         return output
 
