@@ -18,28 +18,36 @@
 # DEALINGS IN THE SOFTWARE.
 import os
 
-from pkg_resources import parse_requirements
 from setuptools import find_packages, setup
 
 KW = ["artificial intelligence", "deep learning", "unsupervised learning", "contrastive learning"]
 
 REQUIREMENTS_FILE = os.path.join(os.path.dirname(__file__), "requirements.txt")
-with open(REQUIREMENTS_FILE) as fo:
-    REQUIREMENTS = [str(req) for req in parse_requirements(fo.readlines())]
+
+
+def parse_requirements(path):
+    """Read one requirement per line without depending on ``pkg_resources``.
+
+    Modern setuptools releases no longer guarantee ``pkg_resources`` is available in pip's
+    isolated editable-build environment. A small parser is sufficient for this project's
+    requirements file and keeps ``pip install -e .`` compatible with current setuptools.
+    """
+
+    with open(path, encoding="utf-8") as file:
+        return [
+            line.strip()
+            for line in file
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+
+
+REQUIREMENTS = parse_requirements(REQUIREMENTS_FILE)
 
 EXTRA_REQUIREMENTS = {
     "dali": ["nvidia-dali-cuda110"],
     "umap": ["matplotlib", "seaborn", "pandas", "umap-learn"],
     "h5": ["h5py"],
 }
-
-
-def parse_requirements(path):
-    with open(path) as f:
-        requirements = [p.strip().split()[-1] for p in f.readlines()]
-    return requirements
-
-
 setup(
     name="solo-learn",
     packages=find_packages(exclude=["bash_files", "docs", "downstream", "tests", "zoo"]),
