@@ -817,6 +817,10 @@ class BaseMomentumMethod(BaseMethod):
 
         cfg = super(BaseMomentumMethod, BaseMomentumMethod).add_and_assert_specific_cfg(cfg)
 
+        # Momentum-based methods may omit the entire ``momentum`` node in a YAML file.
+        # Initialize it before assigning nested defaults so OmegaConf does not raise a
+        # ConfigAttributeError during construction.
+        cfg.momentum = omegaconf_select(cfg, "momentum", {})
         cfg.momentum.base_tau = omegaconf_select(cfg, "momentum.base_tau", 0.99)
         cfg.momentum.final_tau = omegaconf_select(cfg, "momentum.final_tau", 1.0)
         cfg.momentum.classifier = omegaconf_select(cfg, "momentum.classifier", False)

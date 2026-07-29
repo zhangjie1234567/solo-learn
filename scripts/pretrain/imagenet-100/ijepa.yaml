@@ -28,6 +28,9 @@ method_kwargs:
   num_target_masks: 4
   min_keep: 10
   allow_overlap: False
+momentum:
+  base_tau: 0.996
+  final_tau: 1.0
 data:
   dataset: imagenet100
   train_path: "/ssd/zhangjie/imagenet100/imagefolder/train"
