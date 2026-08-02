@@ -35,7 +35,7 @@ test -f "${REPO}/main_pretrain.py"
 test -d "${REPO}/solo"
 test -d "${REPO}/scripts/pretrain/imagenet-100"
 
-python -m pip install -e .
+# python -m pip install -e .
 
 python - <<'PY'
 import hydra
@@ -120,9 +120,9 @@ python main_pretrain.py \
   --config-path scripts/pretrain/imagenet-100 \
   --config-name ijepa.yaml \
   devices=8 \
-  ++strategy=ddp \
+  ++strategy=ddp_find_unused_parameters_true \
   precision=bf16-mixed \
-  wandb.enabled=false \
+  wandb.enabled=true \
   --cfg job \
   > "${LOG_ROOT}/ijepa_config_check.txt"
 
@@ -130,9 +130,9 @@ python main_pretrain.py \
   --config-path scripts/pretrain/imagenet-100 \
   --config-name lejepa.yaml \
   devices=8 \
-  ++strategy=ddp \
+  ++strategy=ddp_find_unused_parameters_true \
   precision=bf16-mixed \
-  wandb.enabled=false \
+  wandb.enabled=true \
   --cfg job \
   > "${LOG_ROOT}/lejepa_config_check.txt"
 
@@ -158,10 +158,10 @@ run_experiment () {
     main_pretrain.py \
     "$@" \
     devices=8 \
-    ++strategy=ddp \
+    ++strategy=ddp_find_unused_parameters_true \
     precision=bf16-mixed \
     data.num_workers=8 \
-    wandb.enabled=false \
+    wandb.enabled=true \
     name="${run_name}" \
     checkpoint.frequency=1 \
     auto_resume.enabled=true \

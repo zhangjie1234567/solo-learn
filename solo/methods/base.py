@@ -489,6 +489,8 @@ class BaseMethod(pl.LightningModule):
                     continue
                 split_group = {key: value for key, value in group.items() if key != "params"}
                 split_group["params"] = params
+                if group_name == "backbone":
+                    split_group["name"] = "backbone_special" if use_special else "backbone_aux"
                 split_group[flag_name] = use_special
                 if not use_special and "lr" not in split_group:
                     split_group["lr"] = aux_lr
